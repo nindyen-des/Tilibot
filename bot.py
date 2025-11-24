@@ -5,12 +5,12 @@ import asyncio
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application,
+    Updater,
     CommandHandler,
     CallbackContext,
     CallbackQueryHandler,
     MessageHandler,
-    filters,
+    Filters,
     ConversationHandler
 )
 
@@ -22,11 +22,10 @@ DATABASE_FILES = ["v1.txt", "v2.txt", "v3.txt", "v4.txt", "v5.txt"]
 USED_ACCOUNTS_FILE = "used_accounts.txt"
 BANNED_USERS_FILE = "banned_users.txt"
 FEEDBACK_FILE = "feedback.txt"
-LINES_TO_SEND = 10  # Binawasan para mas mabilis
+LINES_TO_SEND = 10
 
 # === STATES FOR CONVERSATION HANDLERS ===
-AWAITING_USER_ID, AWAITING_SEARCH_QUERY, AWAITING_BROADCAST, AWAITING_ANNOUNCEMENT = range(4)
-AWAITING_BAN_USER, AWAITING_UNBAN_USER, AWAITING_NEW_DOMAIN, AWAITING_FEEDBACK = range(4, 8)
+AWAITING_FEEDBACK, AWAITING_BROADCAST, AWAITING_BAN_USER = range(3)
 
 # === DOMAIN LIST ===
 DOMAINS = [
@@ -49,16 +48,9 @@ EMOJIS = {
     "success": "✅",
     "error": "❌",
     "warning": "⚠️",
-    "search": "🔎",
     "broadcast": "📢",
-    "announce": "📌",
     "ban": "🚫",
-    "unban": "✅",
-    "add": "➕",
-    "remove": "➖",
-    "clear": "🔄",
     "users": "👥",
-    "logs": "📋",
     "domain": "🌐"
 }
 
@@ -95,9 +87,7 @@ def generate_random_key(length=8):
 def get_expiry_time(duration):
     now = datetime.now()
     duration_map = {
-        "1m": 60, "5m": 300,
-        "1h": 3600, "1d": 86400, "3d": 259200, "7d": 604800,
-        "15d": 1296000, "30d": 2592000
+        "1h": 3600, "1d": 86400, "7d": 604800, "30d": 2592000
     }
     return None if duration == "lifetime" else (now + timedelta(seconds=duration_map[duration])).timestamp()
 
@@ -620,28 +610,29 @@ async def cancel(update: Update, context: CallbackContext):
 
 # === MAIN FUNCTION ===
 def main():
-    # Create application
-    application = Application.builder().token(TOKEN).build()
+    # Create updater
+    updater = Updater(TOKEN)
+    dispatcher = updater.dispatcher
     
     # Add command handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("key", redeem_key))
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("key", redeem_key))
     
     # Add callback query handlers
-    application.add_handler(CallbackQueryHandler(generate_menu, pattern="^main_generate$"))
-    application.add_handler(CallbackQueryHandler(bot_info, pattern="^main_info$"))
-    application.add_handler(CallbackQueryHandler(help_menu, pattern="^main_help$"))
-    application.add_handler(CallbackQueryHandler(feedback_menu, pattern="^main_feedback$"))
-    application.add_handler(CallbackQueryHandler(admin_panel, pattern="^main_admin$"))
-    application.add_handler(CallbackQueryHandler(main_menu_handler, pattern="^main_menu$"))
-    application.add_handler(CallbackQueryHandler(generate_filtered_accounts, pattern="^generate_"))
+    dispatcher.add_handler(CallbackQueryHandler(generate_menu, pattern="^main_generate$"))
+    dispatcher.add_handler(CallbackQueryHandler(bot_info, pattern="^main_info$"))
+    dispatcher.add_handler(CallbackQueryHandler(help_menu, pattern="^main_help$"))
+    dispatcher.add_handler(CallbackQueryHandler(feedback_menu, pattern="^main_feedback$"))
+    dispatcher.add_handler(CallbackQueryHandler(admin_panel, pattern="^main_admin$"))
+    dispatcher.add_handler(CallbackQueryHandler(main_menu_handler, pattern="^main_menu$"))
+    dispatcher.add_handler(CallbackQueryHandler(generate_filtered_accounts, pattern="^generate_"))
     
     # Admin handlers
-    application.add_handler(CallbackQueryHandler(admin_stats, pattern="^admin_stats$"))
-    application.add_handler(CallbackQueryHandler(generate_key_menu, pattern="^admin_genkey$"))
-    application.add_handler(CallbackQueryHandler(generate_key, pattern="^genkey_"))
-    application.add_handler(CallbackQueryHandler(broadcast_message, pattern="^admin_broadcast$"))
-    application.add_handler(CallbackQueryHandler(ban_user, pattern="^admin_ban$"))
+    dispatcher.add_handler(CallbackQueryHandler(admin_stats, pattern="^admin_stats$"))
+    dispatcher.add_handler(CallbackQueryHandler(generate_key_menu, pattern="^admin_genkey$"))
+    dispatcher.add_handler(CallbackQueryHandler(generate_key, pattern="^genkey_"))
+    dispatcher.add_handler(CallbackQueryHandler(broadcast_message, pattern="^admin_broadcast$"))
+    dispatcher.add_handler(CallbackQueryHandler(ban_user, pattern="^admin_ban$"))
     
     # Conversation handler
     conv_handler = ConversationHandler(
@@ -651,20 +642,21 @@ def main():
             CallbackQueryHandler(feedback_menu, pattern="^main_feedback$")
         ],
         states={
-            AWAITING_BROADCAST: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_broadcast)],
-            AWAITING_BAN_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_ban_user)],
-            AWAITING_FEEDBACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_feedback)]
+            AWAITING_BROADCAST: [MessageHandler(Filters.text & ~Filters.command, handle_broadcast)],
+            AWAITING_BAN_USER: [MessageHandler(Filters.text & ~Filters.command, handle_ban_user)],
+            AWAITING_FEEDBACK: [MessageHandler(Filters.text & ~Filters.command, handle_feedback)]
         },
         fallbacks=[CommandHandler("cancel", cancel)]
     )
     
-    application.add_handler(conv_handler)
+    dispatcher.add_handler(conv_handler)
     
     print("🤖 Tollipop Bot is starting...")
     print("✅ Bot is running and waiting for messages...")
     
     # Start the Bot
-    application.run_polling()
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
