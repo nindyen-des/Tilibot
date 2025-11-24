@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: tollipop-telegram-bot
+    name: tollipop-bot
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -10,5 +10,3 @@ services:
         value: "8551305615:AAEdnWWsmqoWTT_pqiCQd-qO__LyVK7HG8E"
       - key: ADMIN_ID
         value: "5728569894"  # PALITAN MO ITO NG ID MO
-      - key: RENDER
-        value: "true"
