@@ -1,5 +1,0 @@
-pubg:player1:pass222
-codashop:code1:pass333
-facebook:fb1:pass444
-netflix:nf1:pass555
-tiktok:tt1:pass666
