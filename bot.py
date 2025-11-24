@@ -23,7 +23,6 @@ USED_ACCOUNTS_FILE = "used_accounts.txt"
 BANNED_USERS_FILE = "banned_users.txt"
 FEEDBACK_FILE = "feedback.txt"
 LINES_TO_SEND = 100
-PORT = int(os.environ.get('PORT', 8080))
 
 # === STATES FOR CONVERSATION HANDLERS ===
 AWAITING_USER_ID, AWAITING_SEARCH_QUERY, AWAITING_BROADCAST, AWAITING_ANNOUNCEMENT = range(4)
@@ -171,7 +170,7 @@ def create_key_duration_menu():
 
 # === COMMAND HANDLERS ===
 async def start(update: Update, context: CallbackContext):
-    if is_banned(update.message.chat_id):
+    if is_banned(update.effective_chat.id):
         return await update.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
@@ -191,7 +190,7 @@ async def start(update: Update, context: CallbackContext):
     )
 
 async def redeem_key(update: Update, context: CallbackContext):
-    if is_banned(update.message.chat_id):
+    if is_banned(update.effective_chat.id):
         return await update.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
@@ -206,7 +205,7 @@ async def redeem_key(update: Update, context: CallbackContext):
             parse_mode="Markdown"
         )
 
-    chat_id = str(update.message.chat_id)
+    chat_id = str(update.effective_chat.id)
     entered_key = context.args[0].upper()
 
     if entered_key not in keys_data["keys"]:
@@ -265,9 +264,9 @@ async def admin_panel(update: Update, context: CallbackContext):
 async def generate_menu(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
-    chat_id = str(query.message.chat_id)
+    chat_id = str(query.message.chat.id)
     
-    if is_banned(query.message.chat_id):
+    if is_banned(query.message.chat.id):
         return await query.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
@@ -297,9 +296,10 @@ async def generate_menu(update: Update, context: CallbackContext):
 async def generate_filtered_accounts(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
-    chat_id, selected_domain = str(query.message.chat_id), query.data.replace("generate_", "")
+    chat_id = str(query.message.chat.id)
+    selected_domain = query.data.replace("generate_", "")
 
-    if is_banned(query.message.chat_id):
+    if is_banned(query.message.chat.id):
         return await query.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
@@ -494,7 +494,7 @@ async def help_menu(update: Update, context: CallbackContext):
 async def user_time(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()
-    chat_id = str(query.message.chat_id)
+    chat_id = str(query.message.chat.id)
     
     if chat_id not in keys_data["user_keys"]:
         keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Main Menu", callback_data="main_menu")]]
@@ -560,13 +560,13 @@ async def feedback_menu(update: Update, context: CallbackContext):
     return AWAITING_FEEDBACK
 
 async def handle_feedback(update: Update, context: CallbackContext):
-    if is_banned(update.message.chat_id):
+    if is_banned(update.effective_chat.id):
         return await update.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
     
     feedback = update.message.text
-    user_id = update.message.chat_id
+    user_id = update.effective_chat.id
     username = update.message.from_user.username or "N/A"
     
     with open(FEEDBACK_FILE, "a", encoding="utf-8") as f:
@@ -648,7 +648,6 @@ async def user_time_admin(update: Update, context: CallbackContext):
 
 async def handle_user_time_check(update: Update, context: CallbackContext):
     user_id = update.message.text.strip()
-    chat_id = str(update.message.chat_id)
     
     if not user_id.isdigit():
         keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Admin Panel", callback_data="main_admin")]]
@@ -657,7 +656,7 @@ async def handle_user_time_check(update: Update, context: CallbackContext):
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
-        return
+        return ConversationHandler.END
     
     if user_id not in keys_data["user_keys"]:
         keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Admin Panel", callback_data="main_admin")]]
@@ -666,7 +665,7 @@ async def handle_user_time_check(update: Update, context: CallbackContext):
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
-        return
+        return ConversationHandler.END
     
     expiry = keys_data["user_keys"][user_id]
     expiry_text = "Lifetime" if expiry is None else format_time(expiry)
@@ -701,8 +700,8 @@ async def search_accounts(update: Update, context: CallbackContext):
     return AWAITING_SEARCH_QUERY
 
 async def handle_search_query(update: Update, context: CallbackContext):
-    query = update.message.text.strip()
-    parts = query.split()
+    query_text = update.message.text.strip()
+    parts = query_text.split()
     
     if len(parts) < 1:
         keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Admin Panel", callback_data="main_admin")]]
@@ -804,12 +803,12 @@ async def broadcast_message(update: Update, context: CallbackContext):
 
 async def handle_broadcast(update: Update, context: CallbackContext):
     message = update.message.text
-    users = keys_data["user_keys"].keys()
+    users = list(keys_data["user_keys"].keys())
     success = 0
     failed = 0
     
     processing_msg = await update.message.reply_text(
-        f"{EMOJIS['broadcast']} Sending broadcast messages..."
+        f"{EMOJIS['broadcast']} Sending broadcast messages to {len(users)} users..."
     )
     
     for user_id in users:
@@ -823,7 +822,7 @@ async def handle_broadcast(update: Update, context: CallbackContext):
         except Exception as e:
             print(f"Error sending to {user_id}: {str(e)}")
             failed += 1
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.1)  # Small delay to avoid rate limits
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Admin Panel", callback_data="main_admin")]]
     
@@ -1114,37 +1113,38 @@ async def cancel(update: Update, context: CallbackContext):
     )
     return ConversationHandler.END
 
-# === MODIFIED MAIN FUNCTION FOR RENDER.COM ===
+# === MAIN FUNCTION ===
 def main():
-    app = Application.builder().token(TOKEN).build()
+    # Create application
+    application = Application.builder().token(TOKEN).build()
     
-    # Add all handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("key", redeem_key))
-    app.add_handler(CommandHandler("generate", generate_menu))
+    # Add command handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("key", redeem_key))
+    application.add_handler(CommandHandler("generate", generate_menu))
     
-    # Callback query handlers
-    app.add_handler(CallbackQueryHandler(generate_menu, pattern="^main_generate$"))
-    app.add_handler(CallbackQueryHandler(bot_info, pattern="^main_info$"))
-    app.add_handler(CallbackQueryHandler(help_menu, pattern="^main_help$"))
-    app.add_handler(CallbackQueryHandler(user_time, pattern="^main_time$"))
-    app.add_handler(CallbackQueryHandler(stats, pattern="^main_stats$"))
-    app.add_handler(CallbackQueryHandler(feedback_menu, pattern="^main_feedback$"))
-    app.add_handler(CallbackQueryHandler(admin_panel, pattern="^main_admin$"))
-    app.add_handler(CallbackQueryHandler(main_menu_handler, pattern="^main_menu$"))
-    app.add_handler(CallbackQueryHandler(generate_filtered_accounts, pattern="^generate_"))
+    # Add callback query handlers
+    application.add_handler(CallbackQueryHandler(generate_menu, pattern="^main_generate$"))
+    application.add_handler(CallbackQueryHandler(bot_info, pattern="^main_info$"))
+    application.add_handler(CallbackQueryHandler(help_menu, pattern="^main_help$"))
+    application.add_handler(CallbackQueryHandler(user_time, pattern="^main_time$"))
+    application.add_handler(CallbackQueryHandler(stats, pattern="^main_stats$"))
+    application.add_handler(CallbackQueryHandler(feedback_menu, pattern="^main_feedback$"))
+    application.add_handler(CallbackQueryHandler(admin_panel, pattern="^main_admin$"))
+    application.add_handler(CallbackQueryHandler(main_menu_handler, pattern="^main_menu$"))
+    application.add_handler(CallbackQueryHandler(generate_filtered_accounts, pattern="^generate_"))
     
     # Admin handlers
-    app.add_handler(CallbackQueryHandler(view_logs, pattern="^admin_logs$"))
-    app.add_handler(CallbackQueryHandler(admin_stats, pattern="^admin_stats$"))
-    app.add_handler(CallbackQueryHandler(generate_key_menu, pattern="^admin_genkey$"))
-    app.add_handler(CallbackQueryHandler(generate_key, pattern="^genkey_"))
-    app.add_handler(CallbackQueryHandler(search_accounts, pattern="^admin_search$"))
-    app.add_handler(CallbackQueryHandler(clear_used, pattern="^admin_clearused$"))
-    app.add_handler(CallbackQueryHandler(user_list, pattern="^admin_userlist$"))
-    app.add_handler(CallbackQueryHandler(handle_remove_domain, pattern="^remove_"))
+    application.add_handler(CallbackQueryHandler(view_logs, pattern="^admin_logs$"))
+    application.add_handler(CallbackQueryHandler(admin_stats, pattern="^admin_stats$"))
+    application.add_handler(CallbackQueryHandler(generate_key_menu, pattern="^admin_genkey$"))
+    application.add_handler(CallbackQueryHandler(generate_key, pattern="^genkey_"))
+    application.add_handler(CallbackQueryHandler(search_accounts, pattern="^admin_search$"))
+    application.add_handler(CallbackQueryHandler(clear_used, pattern="^admin_clearused$"))
+    application.add_handler(CallbackQueryHandler(user_list, pattern="^admin_userlist$"))
+    application.add_handler(CallbackQueryHandler(handle_remove_domain, pattern="^remove_"))
     
-    # Conversation handlers
+    # Conversation handler
     conv_handler = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(user_time_admin, pattern="^admin_usertime$"),
@@ -1169,12 +1169,13 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)]
     )
     
-    app.add_handler(conv_handler)
+    application.add_handler(conv_handler)
     
-    print(f"🌟 𝗧𝗢𝗟𝗟𝗜𝗣𝗢𝗣 𝗙𝗥𝗘𝗘 𝗕𝗢𝗧 𝗜𝗦 𝗥𝗨𝗡𝗡𝗜𝗡𝗚...")
+    print("🤖 Toolipop Bot is starting...")
+    print("✅ Bot is running and waiting for messages...")
     
-    # Use polling for both local and Render (simpler for free tier)
-    app.run_polling()
+    # Start the Bot
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
