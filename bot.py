@@ -1,3 +1,4 @@
+
 import os
 import json
 import random
@@ -142,10 +143,10 @@ def create_key_duration_menu():
     return InlineKeyboardMarkup(keyboard)
 
 # === COMMAND HANDLERS ===
-async def start(update: Update, context: CallbackContext):
+def start(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     if is_banned(user_id):
-        return await update.message.reply_text(
+        return update.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
     
@@ -157,22 +158,22 @@ async def start(update: Update, context: CallbackContext):
         "Select an option below:"
     )
     
-    await update.message.reply_text(
+    update.message.reply_text(
         welcome_message,
         reply_markup=create_main_menu(),
         parse_mode="Markdown"
     )
 
-async def redeem_key(update: Update, context: CallbackContext):
+def redeem_key(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     if is_banned(user_id):
-        return await update.message.reply_text(
+        return update.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
     
     if len(context.args) != 1:
         keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Main Menu", callback_data="main_menu")]]
-        return await update.message.reply_text(
+        return update.message.reply_text(
             f"{EMOJIS['warning']} *Invalid Usage!*\n\n"
             "Usage: `/key <your_key>`\n\n"
             "Example: `/key TOLLIPOP-ABCD1234`",
@@ -184,13 +185,13 @@ async def redeem_key(update: Update, context: CallbackContext):
     entered_key = context.args[0].upper()
 
     if entered_key not in keys_data["keys"]:
-        return await update.message.reply_text(f"{EMOJIS['error']} Invalid or expired key!")
+        return update.message.reply_text(f"{EMOJIS['error']} Invalid or expired key!")
 
     expiry = keys_data["keys"][entered_key]
     if expiry is not None and datetime.now().timestamp() > expiry:
         del keys_data["keys"][entered_key]
         save_keys(keys_data)
-        return await update.message.reply_text(f"{EMOJIS['error']} This key has already expired!")
+        return update.message.reply_text(f"{EMOJIS['error']} This key has already expired!")
 
     keys_data["user_keys"][chat_id] = expiry
     del keys_data["keys"][entered_key]
@@ -200,7 +201,7 @@ async def redeem_key(update: Update, context: CallbackContext):
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['generate']} Generate Accounts", callback_data="main_generate")]]
     
-    await update.message.reply_text(
+    update.message.reply_text(
         f"{EMOJIS['success']} *Key Redeemed Successfully!*\n\n"
         f"{EMOJIS['key']} Key: `{entered_key}`\n"
         f"{EMOJIS['time']} Expires: `{expiry_text}`\n\n"
@@ -210,45 +211,45 @@ async def redeem_key(update: Update, context: CallbackContext):
     )
 
 # === CALLBACK QUERY HANDLERS ===
-async def main_menu_handler(update: Update, context: CallbackContext):
+def main_menu_handler(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
-    await query.edit_message_text(
+    query.answer()
+    query.edit_message_text(
         f"{EMOJIS['main']} *𝗧𝗢𝗟𝗟𝗜𝗣𝗢𝗣 𝗔𝗖𝗖𝗢𝗨𝗡𝗧 𝗚𝗘𝗡𝗘𝗥𝗔𝗧𝗢𝗥 𝗕𝗢𝗧* {EMOJIS['main']}\n\n"
         "Select an option below:",
         reply_markup=create_main_menu(),
         parse_mode="Markdown"
     )
 
-async def admin_panel(update: Update, context: CallbackContext):
+def admin_panel(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     if not is_admin(query.from_user.id):
-        return await query.edit_message_text(
+        return query.edit_message_text(
             f"{EMOJIS['error']} You are not authorized to access this panel!"
         )
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['admin']} *ADMIN PANEL* {EMOJIS['admin']}\n\n"
         "Select an option to manage the bot:",
         reply_markup=create_admin_menu(),
         parse_mode="Markdown"
     )
 
-async def generate_menu(update: Update, context: CallbackContext):
+def generate_menu(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     user_id = query.from_user.id
     
     if is_banned(user_id):
-        return await query.message.reply_text(
+        return query.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
     
     chat_id = str(user_id)
     if chat_id not in keys_data["user_keys"]:
-        return await query.message.reply_text(
+        return query.message.reply_text(
             f"{EMOJIS['error']} You need a valid key to use this feature!"
         )
 
@@ -263,30 +264,30 @@ async def generate_menu(update: Update, context: CallbackContext):
     
     keyboard.append([InlineKeyboardButton(f"{EMOJIS['back']} Main Menu", callback_data="main_menu")])
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['generate']} *Select a domain to generate:*",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
 
-async def generate_filtered_accounts(update: Update, context: CallbackContext):
+def generate_filtered_accounts(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     user_id = query.from_user.id
     selected_domain = query.data.replace("generate_", "")
 
     if is_banned(user_id):
-        return await query.message.reply_text(
+        return query.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
     
     chat_id = str(user_id)
     if chat_id not in keys_data["user_keys"]:
-        return await query.message.reply_text(
+        return query.message.reply_text(
             f"{EMOJIS['error']} You need a valid key to use this feature!"
         )
 
-    processing_msg = await query.message.reply_text(
+    processing_msg = query.message.reply_text(
         f"{EMOJIS['generate']} *Processing... Please wait.*"
     )
 
@@ -315,10 +316,11 @@ async def generate_filtered_accounts(update: Update, context: CallbackContext):
             continue
 
     if not matched_lines:
-        return await processing_msg.edit_text(
+        processing_msg.edit_text(
             f"{EMOJIS['error']} *No available accounts found for this domain!*",
             parse_mode="Markdown"
         )
+        return
 
     # Append used accounts
     with open(USED_ACCOUNTS_FILE, "a", encoding="utf-8", errors="ignore") as f:
@@ -334,34 +336,34 @@ async def generate_filtered_accounts(update: Update, context: CallbackContext):
     
     accounts_text += f"\n{EMOJIS['success']} *Enjoy your accounts!*"
 
-    await processing_msg.delete()
-    await query.message.reply_text(
+    processing_msg.delete()
+    query.message.reply_text(
         accounts_text,
         parse_mode="Markdown"
     )
 
-async def generate_key_menu(update: Update, context: CallbackContext):
+def generate_key_menu(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     if not is_admin(query.from_user.id):
-        return await query.edit_message_text(
+        return query.edit_message_text(
             f"{EMOJIS['error']} You are not authorized to use this feature!"
         )
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['key']} *Generate New Key* {EMOJIS['key']}\n\n"
         "Select the duration for the new key:",
         reply_markup=create_key_duration_menu(),
         parse_mode="Markdown"
     )
 
-async def generate_key(update: Update, context: CallbackContext):
+def generate_key(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     if not is_admin(query.from_user.id):
-        return await query.edit_message_text(
+        return query.edit_message_text(
             f"{EMOJIS['error']} You are not authorized to use this feature!"
         )
     
@@ -372,7 +374,7 @@ async def generate_key(update: Update, context: CallbackContext):
     keys_data["keys"][new_key] = expiry
     save_keys(keys_data)
 
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['success']} *New Key Generated!*\n\n"
         f"{EMOJIS['key']} Key: `{new_key}`\n"
         f"{EMOJIS['time']} Duration: `{duration}`\n\n"
@@ -380,9 +382,9 @@ async def generate_key(update: Update, context: CallbackContext):
         parse_mode="Markdown"
     )
 
-async def bot_info(update: Update, context: CallbackContext):
+def bot_info(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     total_users = len(keys_data["user_keys"])
     active_users = sum(1 for expiry in keys_data["user_keys"].values() 
@@ -390,7 +392,7 @@ async def bot_info(update: Update, context: CallbackContext):
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Main Menu", callback_data="main_menu")]]
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['info']} *𝗧𝗢𝗟𝗟𝗜𝗣𝗢𝗣 𝗔𝗖𝗖𝗢𝗨𝗡𝗧 𝗚𝗘𝗡𝗘𝗥𝗔𝗧𝗢𝗥 𝗕𝗢𝗧*\n\n"
         f"{EMOJIS['success']} *Version:* 2.0 Simple\n"
         f"{EMOJIS['success']} *Developer:* @TollipopBot\n"
@@ -404,13 +406,13 @@ async def bot_info(update: Update, context: CallbackContext):
         parse_mode="Markdown"
     )
 
-async def help_menu(update: Update, context: CallbackContext):
+def help_menu(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Main Menu", callback_data="main_menu")]]
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['help']} *Help Center* {EMOJIS['help']}\n\n"
         f"{EMOJIS['success']} */start* - Show main menu\n"
         f"{EMOJIS['success']} */key <key>* - Redeem your access key\n"
@@ -426,13 +428,13 @@ async def help_menu(update: Update, context: CallbackContext):
         parse_mode="Markdown"
     )
 
-async def feedback_menu(update: Update, context: CallbackContext):
+def feedback_menu(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Main Menu", callback_data="main_menu")]]
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['feedback']} *Feedback*\n\n"
         "Please send your feedback, suggestions or bug reports.\n\n"
         "Just type your message and send it, it will be forwarded to the admin.",
@@ -441,10 +443,10 @@ async def feedback_menu(update: Update, context: CallbackContext):
     )
     return AWAITING_FEEDBACK
 
-async def handle_feedback(update: Update, context: CallbackContext):
+def handle_feedback(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     if is_banned(user_id):
-        return await update.message.reply_text(
+        return update.message.reply_text(
             f"{EMOJIS['error']} You have been banned from using this bot."
         )
     
@@ -456,7 +458,7 @@ async def handle_feedback(update: Update, context: CallbackContext):
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Main Menu", callback_data="main_menu")]]
     
-    await update.message.reply_text(
+    update.message.reply_text(
         f"{EMOJIS['success']} *Thank you for your feedback!*\n\n"
         "Your message has been sent to the admin.",
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -465,7 +467,7 @@ async def handle_feedback(update: Update, context: CallbackContext):
     
     # Notify admin
     try:
-        await context.bot.send_message(
+        context.bot.send_message(
             ADMIN_ID,
             f"{EMOJIS['feedback']} *New Feedback*\n\n"
             f"{EMOJIS['users']} User: {user_id} (@{username})\n"
@@ -477,12 +479,12 @@ async def handle_feedback(update: Update, context: CallbackContext):
     
     return ConversationHandler.END
 
-async def admin_stats(update: Update, context: CallbackContext):
+def admin_stats(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     if not is_admin(query.from_user.id):
-        return await query.edit_message_text(
+        return query.edit_message_text(
             f"{EMOJIS['error']} You are not authorized to use this feature!"
         )
     
@@ -499,7 +501,7 @@ async def admin_stats(update: Update, context: CallbackContext):
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Admin Panel", callback_data="main_admin")]]
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['stats']} *Admin Statistics*\n\n"
         f"{EMOJIS['users']} Total Users: `{total_users}`\n"
         f"{EMOJIS['success']} Active Users: `{active_users}`\n"
@@ -511,35 +513,35 @@ async def admin_stats(update: Update, context: CallbackContext):
         parse_mode="Markdown"
     )
 
-async def broadcast_message(update: Update, context: CallbackContext):
+def broadcast_message(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     if not is_admin(query.from_user.id):
-        return await query.edit_message_text(
+        return query.edit_message_text(
             f"{EMOJIS['error']} You are not authorized to use this feature!"
         )
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['broadcast']} *Broadcast Message*\n\n"
         "Please reply with the message you want to broadcast to all users.",
         parse_mode="Markdown"
     )
     return AWAITING_BROADCAST
 
-async def handle_broadcast(update: Update, context: CallbackContext):
+def handle_broadcast(update: Update, context: CallbackContext):
     message = update.message.text
     users = list(keys_data["user_keys"].keys())
     success = 0
     failed = 0
     
-    processing_msg = await update.message.reply_text(
+    processing_msg = update.message.reply_text(
         f"{EMOJIS['broadcast']} Sending broadcast messages to {len(users)} users..."
     )
     
     for user_id in users:
         try:
-            await context.bot.send_message(
+            context.bot.send_message(
                 chat_id=int(user_id),
                 text=f"{EMOJIS['broadcast']} *Broadcast Message*\n\n{message}",
                 parse_mode="Markdown"
@@ -548,11 +550,10 @@ async def handle_broadcast(update: Update, context: CallbackContext):
         except Exception as e:
             print(f"Error sending to {user_id}: {str(e)}")
             failed += 1
-        await asyncio.sleep(0.1)
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Admin Panel", callback_data="main_admin")]]
     
-    await processing_msg.edit_text(
+    processing_msg.edit_text(
         f"{EMOJIS['success']} *Broadcast Completed!*\n\n"
         f"{EMOJIS['success']} Success: `{success}`\n"
         f"{EMOJIS['error']} Failed: `{failed}`",
@@ -561,28 +562,28 @@ async def handle_broadcast(update: Update, context: CallbackContext):
     )
     return ConversationHandler.END
 
-async def ban_user(update: Update, context: CallbackContext):
+def ban_user(update: Update, context: CallbackContext):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     
     if not is_admin(query.from_user.id):
-        return await query.edit_message_text(
+        return query.edit_message_text(
             f"{EMOJIS['error']} You are not authorized to use this feature!"
         )
     
-    await query.edit_message_text(
+    query.edit_message_text(
         f"{EMOJIS['ban']} *Ban User*\n\n"
         "Please reply with the user ID you want to ban.",
         parse_mode="Markdown"
     )
     return AWAITING_BAN_USER
 
-async def handle_ban_user(update: Update, context: CallbackContext):
+def handle_ban_user(update: Update, context: CallbackContext):
     user_id = update.message.text.strip()
     
     if not user_id.isdigit():
         keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Admin Panel", callback_data="main_admin")]]
-        await update.message.reply_text(
+        update.message.reply_text(
             f"{EMOJIS['error']} Invalid user ID! Please enter a numeric user ID.",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
@@ -594,15 +595,15 @@ async def handle_ban_user(update: Update, context: CallbackContext):
     
     keyboard = [[InlineKeyboardButton(f"{EMOJIS['back']} Admin Panel", callback_data="main_admin")]]
     
-    await update.message.reply_text(
+    update.message.reply_text(
         f"{EMOJIS['success']} User `{user_id}` has been banned.",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
     return ConversationHandler.END
 
-async def cancel(update: Update, context: CallbackContext):
-    await update.message.reply_text(
+def cancel(update: Update, context: CallbackContext):
+    update.message.reply_text(
         "Operation cancelled.",
         reply_markup=create_main_menu()
     )
@@ -611,7 +612,7 @@ async def cancel(update: Update, context: CallbackContext):
 # === MAIN FUNCTION ===
 def main():
     # Create updater
-    updater = Updater(TOKEN)
+    updater = Updater(TOKEN, use_context=True)
     dispatcher = updater.dispatcher
     
     # Add command handlers
