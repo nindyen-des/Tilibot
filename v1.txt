@@ -1,0 +1,5 @@
+garena:test1:password123
+garena:test2:password456
+roblox:user1:pass789
+freefire:account1:pass000
+mobilelegends:ml1:pass111
