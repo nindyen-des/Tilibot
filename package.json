@@ -1,16 +1,16 @@
 {
-  "name": "tollipop-bot",
+  "name": "toolipop-premium-bot",
   "version": "1.0.0",
-  "description": "Telegram Account Generator Bot",
+  "description": "TOOLIPOP PREMIUM BOT - Telegram Account Generator",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.64.0",
-    "express": "^4.18.2"
+    "fs": "0.0.1-security"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=16.0.0"
   }
 }
